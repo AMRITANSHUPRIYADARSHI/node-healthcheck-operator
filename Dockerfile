@@ -16,33 +16,53 @@ COPY go.mod go.mod
 COPY go.sum go.sum
 
 RUN \
+    echo "=== DEBUG: System Information ===" && \
+    uname -a && \
+    echo "TARGETARCH=${TARGETARCH:-not set}" && \
+    echo "BUILDPLATFORM=${BUILDPLATFORM:-not set}" && \
+    echo "===================================" && \
     # get Go version from mod file
     export GO_VERSION=$(grep -oE "toolchain go[[:digit:]]\.[[:digit:]]+\.[[:digit:]]" go.mod | awk '{print $2}') && \
-    echo "Go version: ${GO_VERSION}" && \
+    echo "DEBUG: Go version from go.mod: ${GO_VERSION}" && \
     # Detect architecture - use TARGETARCH if set (buildx), otherwise detect from system
     # Note: Only amd64 and s390x are supported as per project requirements
     if [ -z "${TARGETARCH}" ]; then \
         DETECTED_ARCH=$(uname -m); \
+        echo "DEBUG: Detected architecture from uname -m: ${DETECTED_ARCH}"; \
         case ${DETECTED_ARCH} in \
             x86_64) GO_ARCH="amd64" ;; \
             s390x) GO_ARCH="s390x" ;; \
-            *) echo "Unsupported architecture: ${DETECTED_ARCH}. Supported architectures: amd64, s390x" && exit 1 ;; \
+            *) echo "ERROR: Unsupported architecture: ${DETECTED_ARCH}. Supported: amd64, s390x" && exit 1 ;; \
         esac; \
     else \
+        echo "DEBUG: Using TARGETARCH from buildx: ${TARGETARCH}"; \
         case ${TARGETARCH} in \
             amd64) GO_ARCH="amd64" ;; \
             s390x) GO_ARCH="s390x" ;; \
-            *) echo "Unsupported architecture: ${TARGETARCH}. Supported architectures: amd64, s390x" && exit 1 ;; \
+            *) echo "ERROR: Unsupported TARGETARCH: ${TARGETARCH}. Supported: amd64, s390x" && exit 1 ;; \
         esac; \
     fi && \
-    echo "Target architecture: ${GO_ARCH}" && \
+    echo "DEBUG: Go architecture to download: ${GO_ARCH}" && \
     # find filename for latest z version from Go download page
     export GO_FILENAME=$(curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\" and .arch == \"${GO_ARCH}\") | .filename") && \
-    echo "Go filename: ${GO_FILENAME}" && \
+    echo "DEBUG: Go filename from API: ${GO_FILENAME}" && \
+    if [ -z "${GO_FILENAME}" ] || [ "${GO_FILENAME}" = "null" ]; then \
+        echo "ERROR: Could not find Go ${GO_VERSION} for linux/${GO_ARCH}"; \
+        echo "DEBUG: Available Go files for ${GO_VERSION}:"; \
+        curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\") | \"\(.arch): \(.filename)\""; \
+        exit 1; \
+    fi && \
     # download and unpack
+    echo "DEBUG: Downloading from: https://golang.org/dl/${GO_FILENAME}" && \
     curl -sL -o go.tar.gz "https://golang.org/dl/${GO_FILENAME}" && \
+    echo "DEBUG: Download complete, file size:" && \
+    ls -lh go.tar.gz && \
+    echo "DEBUG: Extracting Go to /usr/local..." && \
     tar -C /usr/local -xzf go.tar.gz && \
-    rm go.tar.gz
+    rm go.tar.gz && \
+    echo "DEBUG: Checking extracted Go binary architecture..." && \
+    file /usr/local/go/bin/go && \
+    echo "DEBUG: Go installation complete"
 
 # add Go to PATH
 ENV PATH="/usr/local/go/bin:${PATH}"
