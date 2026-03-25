@@ -20,18 +20,19 @@ RUN \
     export GO_VERSION=$(grep -oE "toolchain go[[:digit:]]\.[[:digit:]]+\.[[:digit:]]" go.mod | awk '{print $2}') && \
     echo "Go version: ${GO_VERSION}" && \
     # Detect architecture - use TARGETARCH if set (buildx), otherwise detect from system
+    # Note: Only amd64 and s390x are supported as per project requirements
     if [ -z "${TARGETARCH}" ]; then \
         DETECTED_ARCH=$(uname -m); \
         case ${DETECTED_ARCH} in \
             x86_64) GO_ARCH="amd64" ;; \
             s390x) GO_ARCH="s390x" ;; \
-            *) echo "Unsupported architecture: ${DETECTED_ARCH}" && exit 1 ;; \
+            *) echo "Unsupported architecture: ${DETECTED_ARCH}. Supported architectures: amd64, s390x" && exit 1 ;; \
         esac; \
     else \
         case ${TARGETARCH} in \
             amd64) GO_ARCH="amd64" ;; \
             s390x) GO_ARCH="s390x" ;; \
-            *) echo "Unsupported architecture: ${TARGETARCH}. Only amd64 and s390x are supported." && exit 1 ;; \
+            *) echo "Unsupported architecture: ${TARGETARCH}. Supported architectures: amd64, s390x" && exit 1 ;; \
         esac; \
     fi && \
     echo "Target architecture: ${GO_ARCH}" && \

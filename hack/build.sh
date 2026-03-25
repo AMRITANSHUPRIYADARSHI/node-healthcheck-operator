@@ -30,11 +30,14 @@ echo "cgo: ${CGO_ENABLED}"
 export GOEXPERIMENT="${GOEXPERIMENT}"
 
 # Detect target architecture from environment or system
+# TARGETARCH comes from Docker buildx (e.g., 'amd64', 's390x')
+# uname -m returns system architecture (e.g., 'x86_64', 's390x')
+# Note: Only amd64 and s390x are supported as per project requirements
 TARGET_ARCH=${TARGETARCH:-$(uname -m)}
 case ${TARGET_ARCH} in
-    x86_64|amd64) GOARCH=amd64 ;;
+    x86_64|amd64) GOARCH=amd64 ;;  # x86_64 from uname, amd64 from Docker
     s390x) GOARCH=s390x ;;
-    *) echo "Unsupported architecture: ${TARGET_ARCH}" && exit 1 ;;
+    *) echo "Unsupported architecture: ${TARGET_ARCH}. Supported architectures: amd64, s390x" && exit 1 ;;
 esac
 
 echo "Building for architecture: ${GOARCH}"
