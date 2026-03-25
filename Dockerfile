@@ -1,5 +1,11 @@
 # Build the manager binary
-FROM quay.io/centos/centos:stream9 AS builder
+FROM --platform=$BUILDPLATFORM quay.io/centos/centos:stream9 AS builder
+
+# Build arguments for multi-arch support
+ARG TARGETARCH
+ARG TARGETOS
+ARG BUILDPLATFORM
+
 RUN dnf install -y jq git \
     && dnf clean all -y
 
@@ -12,10 +18,17 @@ COPY go.sum go.sum
 RUN \
     # get Go version from mod file
     export GO_VERSION=$(grep -oE "toolchain go[[:digit:]]\.[[:digit:]]+\.[[:digit:]]" go.mod | awk '{print $2}') && \
-    echo ${GO_VERSION} && \
+    echo "Go version: ${GO_VERSION}" && \
+    # Map TARGETARCH to Go's architecture naming (only amd64 and s390x supported)
+    case ${TARGETARCH} in \
+        amd64) GO_ARCH="amd64" ;; \
+        s390x) GO_ARCH="s390x" ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}. Only amd64 and s390x are supported." && exit 1 ;; \
+    esac && \
+    echo "Target architecture: ${GO_ARCH}" && \
     # find filename for latest z version from Go download page
-    export GO_FILENAME=$(curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\" and .arch == \"amd64\") | .filename") && \
-    echo ${GO_FILENAME} && \
+    export GO_FILENAME=$(curl -sL 'https://go.dev/dl/?mode=json&include=all' | jq -r "[.[] | select(.version == \"${GO_VERSION}\")][0].files[] | select(.os == \"linux\" and .arch == \"${GO_ARCH}\") | .filename") && \
+    echo "Go filename: ${GO_FILENAME}" && \
     # download and unpack
     curl -sL -o go.tar.gz "https://golang.org/dl/${GO_FILENAME}" && \
     tar -C /usr/local -xzf go.tar.gz && \
@@ -40,7 +53,12 @@ COPY .git/ .git/
 # Build
 RUN ./hack/build.sh
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi-micro:latest
+
+# Build arguments for multi-arch support
+ARG TARGETARCH
+ARG TARGETOS
+
 WORKDIR /
 COPY --from=builder /workspace/bin/manager .
 USER 65532:65532

@@ -54,6 +54,12 @@ jobs:
         with:
           go-version-file: go.mod
 
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Log in to Quay.io
         uses: docker/login-action@v2
         with:
@@ -61,8 +67,8 @@ jobs:
           password: ${{ secrets.QUAY_PASSWORD }}
           registry: quay.io
 
-      - name: Build and push versioned CSV and images
-        run: VERSION=$VERSION PREVIOUS_VERSION=$PREVIOUS_VERSION SKIP_RANGE_LOWER=$SKIP_RANGE_LOWER make container-build-k8s container-push
+      - name: Build and push versioned CSV and multi-arch images
+        run: VERSION=$VERSION PREVIOUS_VERSION=$PREVIOUS_VERSION SKIP_RANGE_LOWER=$SKIP_RANGE_LOWER make container-build-k8s-multiarch container-push-multiarch
 
       - name: Create release with manifests
         # https://github.com/marketplace/actions/github-release-create-update-and-upload-assets

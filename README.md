@@ -89,6 +89,14 @@ At the moment this is only supported on OpenShift, by monitoring the
 Before running cluster upgrades on kubernetes, or for any other reason, cluster
 admins can prevent new remediation by pausing the NHC CR.
 
+## Multi-Architecture Support
+
+The Node Healthcheck Operator supports multiple architectures:
+- **linux/amd64** - x86_64 (Intel/AMD 64-bit)
+- **linux/s390x** - IBM Z mainframe
+
+For details on building multi-arch images, see the [multi-arch builds documentation](docs/multi-arch-builds.md).
+
 ## Further information
 
 For more details about using or contributing to Node Healthcheck, check out our

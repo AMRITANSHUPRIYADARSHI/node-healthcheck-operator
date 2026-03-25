@@ -227,13 +227,24 @@ verify: bundle-reset ## verify there are no un-committed changes
 generate: controller-gen ## Generate code
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+# Platforms to build for multi-arch support
+PLATFORMS ?= linux/amd64,linux/s390x
+
 .PHONY: docker-build
 docker-build: test-no-verify ## Build the docker image; skip linters and verification to not break CI
 	podman build -t ${IMG} .
 
+.PHONY: docker-build-multiarch
+docker-build-multiarch: test-no-verify ## Build multi-arch docker images (amd64, s390x)
+	docker buildx build --platform $(PLATFORMS) -t ${IMG} .
+
 .PHONY: docker-push
 docker-push: ## Push the docker image
 	podman push ${IMG}
+
+.PHONY: docker-push-multiarch
+docker-push-multiarch: test-no-verify ## Build and push multi-arch docker images (amd64, s390x)
+	docker buildx build --platform $(PLATFORMS) -t ${IMG} --push .
 
 ##@ Build Dependencies
 
@@ -492,10 +503,25 @@ container-build-k8s: ## Build containers for K8s
 container-build-metrics: ## Build containers for K8s with metric related configuration
 	make docker-build bundle-build-metrics
 
+.PHONY: container-build-ocp-multiarch
+container-build-ocp-multiarch: ## Build multi-arch containers for OCP
+	make docker-build-multiarch bundle-build-ocp
+
+.PHONY: container-build-k8s-multiarch
+container-build-k8s-multiarch: ## Build multi-arch containers for K8s
+	make docker-build-multiarch bundle-build-k8s
+
+.PHONY: container-build-metrics-multiarch
+container-build-metrics-multiarch: ## Build multi-arch containers for K8s with metric related configuration
+	make docker-build-multiarch bundle-build-metrics
 
 .PHONY: container-push
 container-push:  ## Push containers (NOTE: catalog can't be build before bundle was pushed)
 	make docker-push bundle-push index-build index-push
+
+.PHONY: container-push-multiarch
+container-push-multiarch:  ## Build and push multi-arch containers (NOTE: catalog can't be build before bundle was pushed)
+	make docker-push-multiarch bundle-push index-build index-push
 
 .PHONY: build-and-run
 build-and-run: container-build-ocp container-push bundle-run
