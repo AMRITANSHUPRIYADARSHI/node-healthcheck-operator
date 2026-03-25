@@ -29,4 +29,13 @@ echo "cgo: ${CGO_ENABLED}"
 # export in case it was set
 export GOEXPERIMENT="${GOEXPERIMENT}"
 
-GOOS=linux GOARCH=amd64 go build -o bin/manager main.go
+# Detect target architecture from environment or system
+TARGET_ARCH=${TARGETARCH:-$(uname -m)}
+case ${TARGET_ARCH} in
+    x86_64|amd64) GOARCH=amd64 ;;
+    s390x) GOARCH=s390x ;;
+    *) echo "Unsupported architecture: ${TARGET_ARCH}" && exit 1 ;;
+esac
+
+echo "Building for architecture: ${GOARCH}"
+GOOS=linux GOARCH=${GOARCH} go build -o bin/manager main.go

@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM quay.io/centos/centos:stream9 AS builder
+FROM --platform=$BUILDPLATFORM quay.io/centos/centos:stream9 AS builder
 
 # Build arguments for multi-arch support
 ARG TARGETARCH
@@ -62,7 +62,7 @@ COPY .git/ .git/
 # Build
 RUN ./hack/build.sh
 
-FROM registry.access.redhat.com/ubi9/ubi-micro:latest
+FROM --platform=$TARGETPLATFORM registry.access.redhat.com/ubi9/ubi-micro:latest
 
 # Build arguments for multi-arch support
 ARG TARGETARCH
