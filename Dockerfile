@@ -6,7 +6,7 @@ ARG TARGETARCH
 ARG TARGETOS
 ARG BUILDPLATFORM
 
-RUN dnf install -y jq git \
+RUN dnf install -y jq git file \
     && dnf clean all -y
 
 WORKDIR /workspace
